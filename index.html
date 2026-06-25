@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraList — Personal Task Manager</title>
+    <!-- Fonts: Retro-modern system fallbacks will be styled, but loading Outfit/Inter for styling contrast -->
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;700&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Global Config -->
+    <script src="config.js"></script>
+</head>
+<body class="theme-cyan">
+    <!-- Desktop Environment Layout -->
+    <div class="desktop-wallpaper">
+        <!-- Main Application Window -->
+        <div class="window main-app-window" id="appWindow">
+            <!-- Window Title Bar -->
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="check-square" class="title-icon"></i>
+                    <span class="title-text">Checklist</span>
+                </div>
+            </header>
+
+            <!-- Classic Dropdown Menu Bar -->
+            <nav class="menu-bar">
+                <div class="menu-item">
+                    <span class="menu-label">File</span>
+                    <div class="menu-dropdown">
+                        <button id="btnMenuNewTask"><i data-lucide="plus" class="icon-small"></i> New Task...</button>
+                        <hr>
+                        <button id="btnMenuExport"><i data-lucide="download" class="icon-small"></i> Export to File...</button>
+                        <button id="btnMenuImport"><i data-lucide="upload" class="icon-small"></i> Import from File...</button>
+                        <hr>
+                        <button id="btnMenuClear" class="danger-item"><i data-lucide="trash-2" class="icon-small"></i> Clear All Local...</button>
+                    </div>
+                </div>
+                <div class="menu-item">
+                    <span class="menu-label">Network</span>
+                    <div class="menu-dropdown">
+                        <button id="btnMenuLogin"><i data-lucide="log-in" class="icon-small"></i> Log In / Register...</button>
+                        <button id="btnMenuLogout"><i data-lucide="log-out" class="icon-small"></i> Log Out User</button>
+                        <hr>
+                        <button id="btnMenuCloudSettings"><i data-lucide="settings" class="icon-small"></i> Supabase Setup...</button>
+                    </div>
+                </div>
+                <div class="menu-item">
+                    <span class="menu-label">Help</span>
+                    <div class="menu-dropdown">
+                        <button id="btnMenuAbout"><i data-lucide="info" class="icon-small"></i> About AuraList...</button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Retro Toolbar -->
+            <section class="toolbar-panel">
+                <div class="toolbar-left">
+                    <button id="btnToolbarNew" class="toolbar-btn">
+                        <i data-lucide="plus-circle" class="toolbar-icon-primary"></i>
+                        <span>Add Task</span>
+                    </button>
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-search-box">
+                        <label for="searchTasks">Search:</label>
+                        <input type="text" id="searchTasks" placeholder="Filter tasks...">
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <div class="toolbar-group hidden">
+                        <label for="filterPriority">Priority:</label>
+                        <select id="filterPriority">
+                            <option value="all">All</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="filterStatus">Status:</label>
+                        <select id="filterStatus">
+                            <option value="all">All</option>
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="sortBy">Sort:</label>
+                        <select id="sortBy">
+                            <option value="custom">Manual</option>
+                            <option value="dueDate" class="hidden">Due Date</option>
+                            <option value="priority" class="hidden">Priority</option>
+                            <option value="title">Alphabetical</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Work Area Split -->
+            <div class="window-body">
+                <!-- Sidebar Category Panel -->
+                <aside class="window-sidebar">
+                    <div class="sidebar-section hidden">
+                        <h4 class="section-title">Categories</h4>
+                        <div class="retro-list-box" id="categoryListBox">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <button id="btnSidebarAddCat" class="toolbar-btn btn-full-width" style="margin-top: 0.5rem;">
+                            <i data-lucide="folder-plus" class="icon-small"></i> Add Category
+                        </button>
+                    </div>
+
+                    <div class="sidebar-section stats-section">
+                        <h4 class="section-title">Statistics</h4>
+                        <div class="retro-stat-panel">
+                            <div class="stat-row">
+                                <span>Completed:</span>
+                                <strong id="statCompleted">0 / 0</strong>
+                            </div>
+                            <div class="stat-progress-bar-container">
+                                <div class="stat-progress-bar-fill" id="statProgressFill" style="width: 0%;"></div>
+                            </div>
+                            <div class="stat-row">
+                                <span>Sync Mode:</span>
+                                <span id="syncModeLabel" class="sync-badgeoffline">Offline</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h4 class="section-title">Retro Accents</h4>
+                        <div class="retro-accent-selector">
+                            <button class="color-swatch swatch-cyan active" data-theme="theme-cyan" title="XP Blue"></button>
+                            <button class="color-swatch swatch-violet" data-theme="theme-violet" title="Vista Purple"></button>
+                            <button class="color-swatch swatch-amber" data-theme="theme-amber" title="Win98 Amber"></button>
+                            <button class="color-swatch swatch-emerald" data-theme="theme-emerald" title="Zune Green"></button>
+                            <button class="color-swatch swatch-rose" data-theme="theme-rose" title="Aero Pink"></button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Task Listing Area -->
+                <main class="window-main-content">
+                    <div class="task-view-container">
+                        <!-- Task Board list -->
+                        <div class="retro-task-list" id="taskList">
+                            <!-- Task cards -->
+                        </div>
+
+                        <!-- Empty state -->
+                        <div id="emptyState" class="retro-empty-state hidden">
+                            <i data-lucide="info" class="empty-icon"></i>
+                            <p>No records found in current view.</p>
+                            <button id="btnEmptyCreate" class="toolbar-btn">Create New Checklist Item</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- Window Status Bar -->
+            <footer class="window-status-bar">
+                <div class="status-pane pane-user" id="statusUser">Guest Session</div>
+                <div class="status-pane pane-progress" id="statusProgress">All tasks active</div>
+                <div class="status-pane pane-cloud" id="statusCloud">Disconnected</div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- USER LOGIN / REGISTER DIALOG WINDOW -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="window dialog-window login-window">
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="lock" class="title-icon"></i>
+                    <span>AuraList Security Agent</span>
+                </div>
+                <button class="title-btn btn-close" id="btnCloseLogin">X</button>
+            </header>
+            <div class="window-body dialog-body">
+                <div class="login-banner">
+                    <i data-lucide="key-round" class="banner-icon"></i>
+                    <div>
+                        <h4>Cloud Sync Sign-In</h4>
+                        <p>Authenticate to sync checklist points across machines.</p>
+                    </div>
+                </div>
+
+                <form id="loginForm" onsubmit="return false;">
+                    <div class="retro-form-group">
+                        <label for="loginEmail">Email Address:</label>
+                        <input type="email" id="loginEmail" required placeholder="pravekjava@gmail.com">
+                    </div>
+                    <div class="retro-form-group">
+                        <label for="loginPassword">Password:</label>
+                        <input type="password" id="loginPassword" required placeholder="••••••••">
+                    </div>
+                    
+                    <div class="login-actions">
+                        <button type="submit" id="btnSubmitLogin" class="dialog-btn btn-ok">Log In</button>
+                        <button type="button" id="btnSubmitRegister" class="dialog-btn">Register</button>
+                        <button type="button" id="btnRunOffline" class="dialog-btn">Run Offline</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASK EDITOR WINDOW (Tabs layout) -->
+    <div id="taskModal" class="modal-overlay">
+        <div class="window task-editor-window">
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="edit" class="title-icon"></i>
+                    <span id="taskModalHeader">Task Configuration</span>
+                </div>
+                <button class="title-btn btn-close" id="btnCancelTaskModal">X</button>
+            </header>
+            
+            <div class="window-body task-editor-body">
+                <!-- Retro Tabs Bar (Hidden) -->
+                <div class="retro-tabs hidden">
+                    <button class="retro-tab active" data-tab="tab-details">1. General Details</button>
+                    <button class="retro-tab" data-tab="tab-subtasks">2. Subtasks</button>
+                    <button class="retro-tab" data-tab="tab-screenshots">3. Screenshots</button>
+                    <button class="retro-tab" data-tab="tab-voice">4. Voice Note</button>
+                </div>
+
+                <form id="taskForm" onsubmit="return false;">
+                    <input type="hidden" id="taskId">
+
+                    <!-- Tab 1: Details -->
+                    <div class="editor-section" id="tab-details">
+                        <div class="retro-form-group">
+                            <label for="taskTitle">Task Title *</label>
+                            <input type="text" id="taskTitle" required placeholder="Enter task name...">
+                        </div>
+                        <div class="retro-form-group">
+                            <label for="taskDesc">Description / Notes</label>
+                            <textarea id="taskDesc" rows="3" placeholder="Enter task details..."></textarea>
+                        </div>
+                        <div class="retro-form-row hidden">
+                            <div class="retro-form-group half">
+                                <label for="taskCategory">Category</label>
+                                <select id="taskCategory"></select>
+                            </div>
+                            <div class="retro-form-group half">
+                                <label for="taskPriority">Priority</label>
+                                <select id="taskPriority">
+                                    <option value="low">Low Priority</option>
+                                    <option value="medium" selected>Medium Priority</option>
+                                    <option value="high">High Priority</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="retro-form-group hidden">
+                            <label for="taskDueDate">Due Date</label>
+                            <input type="date" id="taskDueDate">
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Subtasks -->
+                    <div class="editor-section" id="tab-subtasks">
+                        <h4 class="editor-section-title">Checklist Items</h4>
+                        <div class="subtask-add-panel">
+                            <input type="text" id="newSubtaskText" placeholder="Add a checkable pointer...">
+                            <button type="button" id="btnAddSubtask" class="dialog-btn">Add Point</button>
+                        </div>
+                        <div class="subtask-list-box retro-list-box" id="modalSubtaskList">
+                            <!-- Subtasks list checkboxed -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Screenshots -->
+                    <div class="editor-section" id="tab-screenshots">
+                        <h4 class="editor-section-title">Screenshots</h4>
+                        <div class="screenshots-upload-area">
+                            <div class="drag-upload-box" id="screenshotDropzone">
+                                <i data-lucide="image" class="upload-box-icon"></i>
+                                <p>Click to browse or Drag-and-Drop images</p>
+                                <p class="sub-text">(Press Ctrl+V anywhere in this window to paste a screenshot)</p>
+                                <input type="file" id="screenshotInput" accept="image/*" multiple style="display: none;">
+                            </div>
+                            <div class="retro-thumbnail-gallery" id="screenshotContainer">
+                                <!-- Thumbnails -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Voice Notes -->
+                    <div class="editor-section" id="tab-voice">
+                        <h4 class="editor-section-title">Voice Note</h4>
+                        <div class="voice-tab-layout">
+                            <div class="voice-record-card">
+                                <div class="mic-circle-button-wrapper">
+                                    <button type="button" id="btnRecordVoice" class="mic-trigger-btn" title="Click to start recording voice note">
+                                        <i data-lucide="mic" class="mic-glyph"></i>
+                                    </button>
+                                </div>
+                                <div class="voice-record-info">
+                                    <span id="voiceRecordStatusLabel">Voice Recorder Ready</span>
+                                    <span id="recordingTimer" class="retro-mono-timer">00:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Retro 2000s Audio Player Visualizer (Winamp vibe) -->
+                            <div class="winamp-player hidden" id="winampPlayer">
+                                <div class="winamp-title-bar">AuraPlayer Engine</div>
+                                <div class="winamp-face">
+                                    <!-- Play controls -->
+                                    <button type="button" id="btnPlayVoice" class="winamp-btn" title="Play / Pause">
+                                        <i data-lucide="play" class="icon-small"></i>
+                                    </button>
+                                    <!-- Time elapsed -->
+                                    <div class="winamp-timer" id="winampTimer">00:00</div>
+                                    <!-- LED style green spectrum visualizer -->
+                                    <div class="winamp-spectrum" id="winampSpectrum">
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                        <div class="spec-bar"></div>
+                                    </div>
+                                    <!-- Delete button -->
+                                    <button type="button" id="btnDeleteVoice" class="winamp-btn winamp-btn-delete" title="Delete voice note">
+                                        <i data-lucide="trash-2" class="icon-small"></i>
+                                    </button>
+                                </div>
+                                <div class="winamp-seeker">
+                                    <div class="winamp-seeker-fill" id="winampSeekerFill"></div>
+                                </div>
+                            </div>
+
+                            <div class="voice-alternative-upload">
+                                <span>- OR -</span>
+                                <button type="button" id="btnUploadAudio" class="dialog-btn">Upload Audio File...</button>
+                                <input type="file" id="audioFileInput" accept="audio/*" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Actions footer -->
+                    <footer class="dialog-footer">
+                        <button type="button" id="btnCancelTask" class="dialog-btn">Cancel</button>
+                        <button type="submit" id="btnSaveTask" class="dialog-btn btn-ok">Save Changes</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RETRO CATEGORY ADD WINDOW -->
+    <div id="categoryModal" class="modal-overlay">
+        <div class="window dialog-window category-creation-window">
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="folder" class="title-icon"></i>
+                    <span>Category Wizard</span>
+                </div>
+                <button class="title-btn btn-close" id="btnCancelCategoryModal">X</button>
+            </header>
+            <div class="window-body dialog-body">
+                <form id="categoryForm" onsubmit="return false;">
+                    <div class="retro-form-group">
+                        <label for="newCategoryName">Category Name:</label>
+                        <input type="text" id="newCategoryName" required placeholder="e.g., Household, Gym">
+                    </div>
+                    <div class="retro-form-group">
+                        <label>Category Label Color:</label>
+                        <div class="retro-color-grid">
+                            <button type="button" class="color-dot selected" data-color="#0066cc" style="background-color: #0066cc;"></button>
+                            <button type="button" class="color-dot" data-color="#7c3aed" style="background-color: #7c3aed;"></button>
+                            <button type="button" class="color-dot" data-color="#d97706" style="background-color: #d97706;"></button>
+                            <button type="button" class="color-dot" data-color="#059669" style="background-color: #059669;"></button>
+                            <button type="button" class="color-dot" data-color="#e11d48" style="background-color: #e11d48;"></button>
+                            <button type="button" class="color-dot" data-color="#2563eb" style="background-color: #2563eb;"></button>
+                            <button type="button" class="color-dot" data-color="#4b5563" style="background-color: #4b5563;"></button>
+                        </div>
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="button" id="btnCancelCategory" class="dialog-btn">Cancel</button>
+                        <button type="submit" id="btnSaveCategory" class="dialog-btn btn-ok">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUPABASE MANUAL SETUP SETTINGS WINDOW -->
+    <div id="cloudSettingsModal" class="modal-overlay">
+        <div class="window dialog-window cloud-config-window">
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="globe" class="title-icon"></i>
+                    <span>Network Configuration</span>
+                </div>
+                <button class="title-btn btn-close" id="btnCancelCloudSettings">X</button>
+            </header>
+            <div class="window-body dialog-body">
+                <p style="margin-bottom: 1rem; font-size: 0.8125rem;">Enter your Supabase credentials. These are saved in your local browser storage for sync features.</p>
+                <form id="cloudSettingsForm" onsubmit="return false;">
+                    <div class="retro-form-group">
+                        <label for="setupDbUrl">Supabase URL:</label>
+                        <input type="text" id="setupDbUrl" placeholder="https://your-project.supabase.co">
+                    </div>
+                    <div class="retro-form-group">
+                        <label for="setupDbKey">Supabase Anon Key:</label>
+                        <input type="password" id="setupDbKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="button" id="btnResetCloudSettings" class="dialog-btn text-danger">Reset Fields</button>
+                        <button type="button" id="btnCancelCloudSettingsBtn" class="dialog-btn">Cancel</button>
+                        <button type="submit" id="btnSaveCloudSettings" class="dialog-btn btn-ok">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RETRO IMAGE VIEWER WINDOW (Lightbox replacement) -->
+    <div id="lightboxModal" class="modal-overlay">
+        <div class="window image-viewer-window">
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="image" class="title-icon"></i>
+                    <span>AuraView Photo Studio</span>
+                </div>
+                <button class="title-btn btn-close" id="btnCancelLightboxModal">X</button>
+            </header>
+            <div class="window-body image-viewer-body">
+                <div class="image-viewer-frame">
+                    <img id="lightboxImage" src="" alt="Photograph Preview">
+                </div>
+            </div>
+            <footer class="window-status-bar" style="margin-top: 0.5rem;">
+                <div class="status-pane" style="flex-grow: 1;">Ready</div>
+                <div class="status-pane" style="width: auto;">
+                    <a id="btnDownloadImage" href="#" download="screenshot.png" style="color: inherit; text-decoration: none;">
+                        <i data-lucide="download" class="icon-small"></i> Save Image Copy
+                    </a>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- RETRO ABOUT UTILITY DIALOG -->
+    <div id="aboutModal" class="modal-overlay">
+        <div class="window dialog-window about-window">
+            <header class="window-header">
+                <div class="title-left">
+                    <i data-lucide="help-circle" class="title-icon"></i>
+                    <span>About AuraList</span>
+                </div>
+                <button class="title-btn btn-close" id="btnCloseAbout">X</button>
+            </header>
+            <div class="window-body dialog-body about-body">
+                <div class="about-logo-row">
+                    <div class="about-icon-box">
+                        <i data-lucide="check-square" class="about-icon"></i>
+                    </div>
+                    <div>
+                        <h2>AuraList Utility</h2>
+                        <p>Version 2.0.4 (Build 6042)</p>
+                        <p>© 2008-2009 Aura Software Systems, Inc.</p>
+                    </div>
+                </div>
+                <hr>
+                <p class="about-desc">AuraList is a checkboxed pointers organizer designed to combine text items with multimedia assets like screen snapshots and voice sound recordings. Built on classical Web 2.0 technologies.</p>
+                <div class="dialog-footer">
+                    <button type="button" id="btnOkAbout" class="dialog-btn btn-ok">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

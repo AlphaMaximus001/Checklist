@@ -1,0 +1,10 @@
+{
+  "name": "auralist-checklist",
+  "version": "2.0.4",
+  "description": "AuraList Checklist Utility",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}
