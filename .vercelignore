@@ -1,0 +1,5 @@
+# Ignore Node.js backend files so Vercel builds the project as a pure static website
+server.js
+package.json
+package-lock.json
+node_modules/
