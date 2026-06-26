@@ -159,6 +159,14 @@ class AuraListApp {
         this.sortBy = 'custom';
         this.activeTheme = 'theme-cyan';
 
+        // Lightbox Zoom States
+        this.isFitMode = true;
+        this.zoomScale = 1.0;
+
+        // Inline Preview Zoom States
+        this.isInlineFitMode = true;
+        this.inlineZoomScale = 1.0;
+
         // Modal Temporary States
         this.modalScreenshots = []; // Holds Base64 DataURLs or Cloud URLs
         this.modalVoiceNote = null; // Base64 DataURL or Cloud URL
@@ -525,6 +533,87 @@ class AuraListApp {
             document.getElementById('lightboxModal').classList.remove('active');
         });
 
+        // Zoom and Pan controls for Lightbox
+        document.getElementById('btnZoomIn').addEventListener('click', () => this.zoomIn());
+        document.getElementById('btnZoomOut').addEventListener('click', () => this.zoomOut());
+        document.getElementById('btnZoomReset').addEventListener('click', () => this.zoomReset());
+
+        const frame = document.querySelector('.image-viewer-frame');
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        frame.addEventListener('mousedown', (e) => {
+            if (this.isFitMode) return;
+            isDragging = true;
+            frame.classList.add('grabbing');
+            startX = e.pageX - frame.offsetLeft;
+            startY = e.pageY - frame.offsetTop;
+            scrollLeft = frame.scrollLeft;
+            scrollTop = frame.scrollTop;
+        });
+
+        frame.addEventListener('mouseleave', () => {
+            isDragging = false;
+            frame.classList.remove('grabbing');
+        });
+
+        frame.addEventListener('mouseup', () => {
+            isDragging = false;
+            frame.classList.remove('grabbing');
+        });
+
+        frame.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const x = e.pageX - frame.offsetLeft;
+            const y = e.pageY - frame.offsetTop;
+            const walkX = (x - startX);
+            const walkY = (y - startY);
+            frame.scrollLeft = scrollLeft - walkX;
+            frame.scrollTop = scrollTop - walkY;
+        });
+
+        // Inline Preview Events
+        document.getElementById('btnCloseInlinePreview').addEventListener('click', () => this.closeInlinePreview());
+        document.getElementById('btnInlineZoomIn').addEventListener('click', () => this.inlineZoomIn());
+        document.getElementById('btnInlineZoomOut').addEventListener('click', () => this.inlineZoomOut());
+        document.getElementById('btnInlineZoomReset').addEventListener('click', () => this.inlineZoomReset());
+
+        const inlineFrame = document.querySelector('.inline-preview-frame');
+        let isInlineDragging = false;
+        let inlineStartX, inlineStartY, inlineScrollLeft, inlineScrollTop;
+
+        inlineFrame.addEventListener('mousedown', (e) => {
+            if (this.isInlineFitMode) return;
+            isInlineDragging = true;
+            inlineFrame.classList.add('grabbing');
+            inlineStartX = e.pageX - inlineFrame.offsetLeft;
+            inlineStartY = e.pageY - inlineFrame.offsetTop;
+            inlineScrollLeft = inlineFrame.scrollLeft;
+            inlineScrollTop = inlineFrame.scrollTop;
+        });
+
+        inlineFrame.addEventListener('mouseleave', () => {
+            isInlineDragging = false;
+            inlineFrame.classList.remove('grabbing');
+        });
+
+        inlineFrame.addEventListener('mouseup', () => {
+            isInlineDragging = false;
+            inlineFrame.classList.remove('grabbing');
+        });
+
+        inlineFrame.addEventListener('mousemove', (e) => {
+            if (!isInlineDragging) return;
+            e.preventDefault();
+            const x = e.pageX - inlineFrame.offsetLeft;
+            const y = e.pageY - inlineFrame.offsetTop;
+            const walkX = (x - inlineStartX);
+            const walkY = (y - inlineStartY);
+            inlineFrame.scrollLeft = inlineScrollLeft - walkX;
+            inlineFrame.scrollTop = inlineScrollTop - walkY;
+        });
+
         // Drag reorder handles
         const taskListContainer = document.getElementById('taskList');
         taskListContainer.addEventListener('dragover', (e) => {
@@ -842,6 +931,7 @@ class AuraListApp {
         this.modalScreenshots = [];
         this.modalVoiceNote = null;
         document.getElementById('modalSubtaskList').innerHTML = '';
+        this.closeInlinePreview();
 
         if (task) {
             document.getElementById('taskModalHeader').innerText = 'Task Configuration - properties';
@@ -879,6 +969,7 @@ class AuraListApp {
             this.mediaRecorder.stop();
         }
         this.stopModalVoicePlayback();
+        this.closeInlinePreview();
         document.getElementById('taskModal').classList.remove('active');
     }
 
@@ -945,15 +1036,15 @@ class AuraListApp {
             const wrap = document.createElement('div');
             wrap.className = 'thumbnail-wrapper';
             wrap.innerHTML = `
-                <img src="${src}" alt="Screenshot">
-                <button type="button" class="btn-remove-thumb" data-idx="${idx}">&times;</button>
+                <img src="${src}" alt="Screenshot" class="thumbnail-img">
+                <button type="button" class="btn-delete-thumbnail" data-idx="${idx}">&times;</button>
             `;
 
             wrap.querySelector('img').addEventListener('click', () => {
-                this.openLightbox(src);
+                this.openInlinePreview(src);
             });
 
-            wrap.querySelector('.btn-remove-thumb').addEventListener('click', (e) => {
+            wrap.querySelector('.btn-delete-thumbnail').addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.modalScreenshots.splice(idx, 1);
                 this.renderModalScreenshots();
@@ -968,10 +1059,218 @@ class AuraListApp {
         const modal = document.getElementById('lightboxModal');
         const img = document.getElementById('lightboxImage');
         const dl = document.getElementById('btnDownloadImage');
+        const frame = document.querySelector('.image-viewer-frame');
+
+        this.isFitMode = true;
+        this.zoomScale = 1.0;
+
+        // Remove zoomed classes and scroll positioning
+        if (frame) {
+            frame.classList.remove('zoomed', 'grabbing');
+            frame.scrollLeft = 0;
+            frame.scrollTop = 0;
+        }
+
+        img.onload = () => {
+            this.updateZoom();
+        };
 
         img.src = src;
         dl.href = src;
         modal.classList.add('active');
+        this.updateZoom();
+    }
+
+    updateZoom() {
+        const img = document.getElementById('lightboxImage');
+        const frame = document.querySelector('.image-viewer-frame');
+        const zoomPercentSpan = document.getElementById('zoomPercent');
+        if (!img || !frame || !zoomPercentSpan) return;
+
+        if (this.isFitMode) {
+            frame.classList.remove('zoomed');
+            img.style.width = 'auto';
+            img.style.height = 'auto';
+            img.style.transform = 'none';
+
+            // Calculate the fit percentage
+            if (img.naturalWidth && img.clientWidth) {
+                const fitPercent = Math.round((img.clientWidth / img.naturalWidth) * 100);
+                zoomPercentSpan.innerText = `Fit (${fitPercent}%)`;
+            } else {
+                zoomPercentSpan.innerText = 'Fit';
+            }
+        } else {
+            frame.classList.add('zoomed');
+            img.style.width = `${img.naturalWidth * this.zoomScale}px`;
+            img.style.height = 'auto';
+            img.style.transform = 'none';
+            zoomPercentSpan.innerText = `${Math.round(this.zoomScale * 100)}%`;
+        }
+    }
+
+    zoomIn() {
+        this.sfx.playClick();
+        const img = document.getElementById('lightboxImage');
+        if (!img || !img.naturalWidth) return;
+
+        if (this.isFitMode) {
+            // Find current fitted ratio to start from
+            const currentFitScale = img.clientWidth / img.naturalWidth;
+            this.zoomScale = currentFitScale;
+            this.isFitMode = false;
+        }
+
+        const steps = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
+        let nextStep = steps.find(s => s > this.zoomScale + 0.01);
+        if (!nextStep) nextStep = 4.0;
+
+        this.zoomScale = nextStep;
+        this.updateZoom();
+    }
+
+    zoomOut() {
+        this.sfx.playClick();
+        const img = document.getElementById('lightboxImage');
+        if (!img || !img.naturalWidth) return;
+
+        if (this.isFitMode) {
+            const currentFitScale = img.clientWidth / img.naturalWidth;
+            this.zoomScale = currentFitScale;
+            this.isFitMode = false;
+        }
+
+        const steps = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
+        let prevStep = [...steps].reverse().find(s => s < this.zoomScale - 0.01);
+        if (!prevStep) prevStep = 0.1;
+
+        this.zoomScale = prevStep;
+        this.updateZoom();
+    }
+
+    zoomReset() {
+        this.sfx.playClick();
+        const frame = document.querySelector('.image-viewer-frame');
+        this.isFitMode = true;
+        this.zoomScale = 1.0;
+        if (frame) {
+            frame.scrollLeft = 0;
+            frame.scrollTop = 0;
+        }
+        this.updateZoom();
+    }
+
+    openInlinePreview(src) {
+        const container = document.getElementById('inlinePreviewContainer');
+        const img = document.getElementById('inlinePreviewImage');
+        const frame = document.querySelector('.inline-preview-frame');
+
+        if (!container || !img) return;
+
+        this.isInlineFitMode = true;
+        this.inlineZoomScale = 1.0;
+
+        if (frame) {
+            frame.classList.remove('zoomed', 'grabbing');
+            frame.scrollLeft = 0;
+            frame.scrollTop = 0;
+        }
+
+        img.onload = () => {
+            this.updateInlineZoom();
+        };
+
+        img.src = src;
+        container.classList.remove('hidden');
+        this.updateInlineZoom();
+
+        // Scroll the container slightly to make sure the preview is visible
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    closeInlinePreview() {
+        const container = document.getElementById('inlinePreviewContainer');
+        if (container) {
+            container.classList.add('hidden');
+        }
+    }
+
+    updateInlineZoom() {
+        const img = document.getElementById('inlinePreviewImage');
+        const frame = document.querySelector('.inline-preview-frame');
+        const zoomPercentSpan = document.getElementById('inlineZoomPercent');
+        if (!img || !frame || !zoomPercentSpan) return;
+
+        if (this.isInlineFitMode) {
+            frame.classList.remove('zoomed');
+            img.style.width = 'auto';
+            img.style.height = 'auto';
+            img.style.transform = 'none';
+
+            // Calculate the fit percentage
+            if (img.naturalWidth && img.clientWidth) {
+                const fitPercent = Math.round((img.clientWidth / img.naturalWidth) * 100);
+                zoomPercentSpan.innerText = `Fit (${fitPercent}%)`;
+            } else {
+                zoomPercentSpan.innerText = 'Fit';
+            }
+        } else {
+            frame.classList.add('zoomed');
+            img.style.width = `${img.naturalWidth * this.inlineZoomScale}px`;
+            img.style.height = 'auto';
+            img.style.transform = 'none';
+            zoomPercentSpan.innerText = `${Math.round(this.inlineZoomScale * 100)}%`;
+        }
+    }
+
+    inlineZoomIn() {
+        this.sfx.playClick();
+        const img = document.getElementById('inlinePreviewImage');
+        if (!img || !img.naturalWidth) return;
+
+        if (this.isInlineFitMode) {
+            const currentFitScale = img.clientWidth / img.naturalWidth;
+            this.inlineZoomScale = currentFitScale;
+            this.isInlineFitMode = false;
+        }
+
+        const steps = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
+        let nextStep = steps.find(s => s > this.inlineZoomScale + 0.01);
+        if (!nextStep) nextStep = 4.0;
+
+        this.inlineZoomScale = nextStep;
+        this.updateInlineZoom();
+    }
+
+    inlineZoomOut() {
+        this.sfx.playClick();
+        const img = document.getElementById('inlinePreviewImage');
+        if (!img || !img.naturalWidth) return;
+
+        if (this.isInlineFitMode) {
+            const currentFitScale = img.clientWidth / img.naturalWidth;
+            this.inlineZoomScale = currentFitScale;
+            this.isInlineFitMode = false;
+        }
+
+        const steps = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
+        let prevStep = [...steps].reverse().find(s => s < this.inlineZoomScale - 0.01);
+        if (!prevStep) prevStep = 0.1;
+
+        this.inlineZoomScale = prevStep;
+        this.updateInlineZoom();
+    }
+
+    inlineZoomReset() {
+        this.sfx.playClick();
+        const frame = document.querySelector('.inline-preview-frame');
+        this.isInlineFitMode = true;
+        this.inlineZoomScale = 1.0;
+        if (frame) {
+            frame.scrollLeft = 0;
+            frame.scrollTop = 0;
+        }
+        this.updateInlineZoom();
     }
 
     // --- Voice Recording modules ---

@@ -290,6 +290,23 @@
                             <div class="retro-thumbnail-gallery" id="screenshotContainer">
                                 <!-- Thumbnails -->
                             </div>
+
+                            <!-- Inline Image Preview (so user can record voice note simultaneously) -->
+                            <div class="inline-preview-container hidden" id="inlinePreviewContainer" style="margin-top: 12px; border: 1px solid var(--border-glass); border-radius: 8px; overflow: hidden; background: #000000; position: relative;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 6px 12px; border-bottom: 1px solid var(--border-glass); gap: 8px; flex-wrap: wrap;">
+                                    <span style="font-size: 11px; font-weight: bold; color: var(--text-secondary);">Image Preview</span>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <button type="button" class="zoom-btn" id="btnInlineZoomOut" style="height: 18px; padding: 0 6px; font-size: 10px;" title="Zoom Out">-</button>
+                                        <span id="inlineZoomPercent" style="font-size: 10px; min-width: 36px; text-align: center; font-family: var(--font-body); font-weight: bold; color: var(--text-primary);">Fit</span>
+                                        <button type="button" class="zoom-btn" id="btnInlineZoomIn" style="height: 18px; padding: 0 6px; font-size: 10px;" title="Zoom In">+</button>
+                                        <button type="button" class="zoom-btn" id="btnInlineZoomReset" style="height: 18px; padding: 0 6px; font-size: 10px;" title="Fit to container">Fit</button>
+                                    </div>
+                                    <button type="button" class="zoom-btn" id="btnCloseInlinePreview" style="height: 18px; padding: 0 8px; font-size: 10px; background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3);">X</button>
+                                </div>
+                                <div class="inline-preview-frame">
+                                    <img id="inlinePreviewImage" src="" alt="Inline Preview">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -442,7 +459,13 @@
                 </div>
             </div>
             <footer class="window-status-bar" style="margin-top: 0.5rem;">
-                <div class="status-pane" style="flex-grow: 1;">Ready</div>
+                <div class="status-pane" id="imageViewerStatus" style="flex-grow: 1;">Ready</div>
+                <div class="status-pane image-zoom-controls" style="width: auto; display: flex; gap: 8px; align-items: center; border-right: 1px solid var(--border-glass); padding-right: 8px; margin-right: 8px;">
+                    <button type="button" class="zoom-btn" id="btnZoomOut" title="Zoom Out">-</button>
+                    <span id="zoomPercent" style="font-size: 11px; min-width: 48px; text-align: center; font-family: var(--font-body); font-weight: bold;">Fit</span>
+                    <button type="button" class="zoom-btn" id="btnZoomIn" title="Zoom In">+</button>
+                    <button type="button" class="zoom-btn" id="btnZoomReset" title="Fit to screen">Fit</button>
+                </div>
                 <div class="status-pane" style="width: auto;">
                     <a id="btnDownloadImage" href="#" download="screenshot.png" style="color: inherit; text-decoration: none;">
                         <i data-lucide="download" class="icon-small"></i> Save Image Copy
